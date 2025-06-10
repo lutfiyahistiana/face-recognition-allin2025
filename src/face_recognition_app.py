@@ -1,24 +1,18 @@
-# ---- Import Libraries ---- #
 import sys # Library untuk sistem operasi dan keluar dari program
 from tkinter import * # Library untuk membuat GUI
 from tkinter import messagebox # Library untuk menampilkan dialog pesan
-from PIL import ImageTk, Image # Library untuk memproses gambar (PIL = Python Imaging Library)
-from tkinter import filedialog # Library untuk dialog pemilihan file
+from PIL import ImageTk, Image # Library untuk memproses gambar
+from tkinter import filedialog # Library untuk dialog pemillihan file
 import cv2 # Library OpenCV untuk computer vision dan pemrosesan gambar
 import numpy as np # Library NumPy untuk operasi array dan matriks numerik
-import os # Library untuk operasi sistem file dan direktori
+import os # Library untuk operasi file
 import time # Library untuk operasi waktu dan delay
 import threading # Library untuk multi-threading
 import base64 # Library untuk encoding/decoding base64
 import math # Library untuk operasi matematika
-# from operator import itemgetter # Library untuk sorting
 
-# ---- Utility Functions ---- #
+# UTILS
 def resize_256(image):
-    """
-    Fungsi untuk mengubah ukuran gambar menjadi 256x256 piksel
-    dengan mempertahankan aspek rasio yang benar
-    """
     height, width = image.shape[:2] # Mendapatkan tinggi dan lebar gambar
     
     # Jika lebar lebih besar dari tinggi (landscape)
@@ -36,15 +30,13 @@ def resize_256(image):
     
     # Memotong gambar sesuai koordinat yang dihitung
     crop_img = image[start_row:end_row, start_col:end_col]
-    dim = (256, 256) # Menentukan dimensi target (256x256)
+    dimensi = (256, 256)
     
     # Memilih metode interpolasi berdasarkan ukuran gambar
     if crop_img.shape[0] < 256:
-         # Jika gambar kecil, gunakan INTER_CUBIC untuk kualitas lebih baik
-        resized_image = cv2.resize(crop_img, dim, interpolation=cv2.INTER_CUBIC)
+        resized_image = cv2.resize(crop_img, dimensi, interpolation=cv2.INTER_CUBIC)
     else:
-        # Jika gambar besar, gunakan INTER_AREA untuk downsampling yang baik
-        resized_image = cv2.resize(crop_img, dim, interpolation=cv2.INTER_AREA)
+        resized_image = cv2.resize(crop_img, dimensi, interpolation=cv2.INTER_AREA)
     
     return resized_image
 
@@ -55,10 +47,10 @@ def get_magnitude(array):
     """
     return np.sqrt(np.sum(array**2))
 
-def qr_decomposition(M):
+def dekomposisi_qr(M):
     """
-    Implementasi QR decomposition menggunakan Householder reflection
-    Memecah matriks M menjadi Q (orthogonal) dan R (upper triangular)
+    Implementasi dekomposisi qr menggunakan householder reflection,
+    memecah matriks M menjadi Q (orthogonal) dan R (upper triangular)
     M = Q * R
     """
     rows, cols = np.shape(M) # Mendapatkan dimensi matriks
@@ -75,15 +67,14 @@ def qr_decomposition(M):
         H[j:, j:] -= 2.0 * np.outer(v, v) # Menghitung H = I - 2*v*v^T (Householder reflection)
         
         # Update Q dan R
-        Q = Q @ H # Q = Q * H
-        R = H @ R # R = H * R
+        Q = Q @ H
+        R = H @ R
     
     return Q, np.triu(R) # Mengembalikan Q dan bagian upper triangular dari R
 
-def eigenvectors_qr(M):
+def eigen(M):
     """
-    Menghitung eigenvalues dan eigenvectors menggunakan QR algorithm
-    Metode iteratif yang menggunakan QR decomposition berulang kali
+    Menghitung eigenvalues dan eigenvectors
     """
     rows, cols = np.shape(M) # Mendapatkan dimensi matriks
     eigVecs = np.identity(rows) # Inisialisasi matriks eigenvector sebagai matriks identitas
@@ -91,7 +82,7 @@ def eigenvectors_qr(M):
     # Iterasi QR algorithm (100 iterasi untuk konvergensi)
     for k in range(100):
         s = M.item(rows-1, cols-1) * np.identity(rows) # Shift dengan elemen diagonal kanan bawah untuk mempercepat konvergensi
-        Q, R = qr_decomposition(np.subtract(M, s)) # QR decomposition dari (M - sI)
+        Q, R = dekomposisi_qr(np.subtract(M, s)) # QR decomposition dari (M - sI)
         M = np.add(R @ Q, s) # Update M = RQ + sI
         eigVecs = eigVecs @ Q # Akumulasi eigenvectors
     
@@ -100,46 +91,37 @@ def eigenvectors_qr(M):
 def get_k_eigen(k, eigvalues, eigvectors, filecount):
     """
     Mengambil k eigenvalues dan eigenvectors terbesar
-    Digunakan untuk memilih komponen utama dalam PCA
     """
-    eigvals = np.array([]) # Inisialisasi array untuk eigenvalues dan eigenvectors terpilih
-    eigvecs = np.empty((0, filecount), dtype=type(eigvectors))
+    eigvalues = np.array([])
+    eigvectors = np.empty((0, filecount), dtype=type(eigvectors))
     
-    eigvals_copy = eigvalues.copy() # Membuat salinan eigenvalues untuk manipulasi
-    vt = eigvectors.transpose() # Transpose eigenvectors untuk kemudahan akses
+    eigvals_copy = eigvalues.copy() # Untuk manipulasi
+    vt = eigvectors.transpose() # Untuk kemudahan akses
     
     # Mengambil k eigenvalues terbesar
     for i in range(k):
-        max_val = eigvals_copy.max() # Mencari nilai maksimum
-        eigvals = np.append(eigvals, [max_val]) # Menambahkan ke array hasil
+        max_val = eigvals_copy.max()
+        eigvalues = np.append(eigvalues, [max_val])
         
-        index = np.where(eigvals_copy == max_val)[0][0] # Mencari indeks dari nilai maksimum
+        index = np.where(eigvals_copy == max_val)[0][0]
         eigvals_copy[index] = 0 # Set nilai tersebut ke 0 agar tidak dipilih lagi
         
-        vec = vt[index:index+1] # Mengambil eigenvector yang sesuai
-        eigvecs = np.concatenate((eigvecs, vec), axis=0) # Menambahkan ke array hasil
+        vektor = vt[index:index+1] # Mengambil eigenvector yang sesuai
+        eigvectors = np.concatenate((eigvectors, vektor), axis=0) # Menambahkan ke array hasil
     
-    return eigvals, eigvecs
+    return eigvalues, eigvectors
 
-# ---- Video Capture Class ---- #
+# VIDEO CAPTURE
 class VideoCapture:
-    """
-    Kelas untuk menangani capture video dari kamera
-    Wrapper untuk cv2.VideoCapture dengan error handling
-    """
     def __init__(self, source=0):
-        """
-        Inisialisasi objek VideoCapture
-        source: sumber video (0 untuk kamera default)
-        """
-        self.source = source # Sumber video (biasanya 0 untuk webcam)
+        self.source = source # Sumber video
         self.video = None # Objek VideoCapture OpenCV
         self.width = 0 # Lebar frame video
         self.height = 0 # Tinggi frame video
     
     def start(self):
         """
-        Memulai capture video dari sumber yang ditentukan
+        Memulai capture video
         """
         self.video = cv2.VideoCapture(self.source) # Membuat objek VideoCapture OpenCV
         # Mengecek apakah berhasil membuka sumber video
@@ -151,7 +133,7 @@ class VideoCapture:
     
     def stop(self):
         """
-        Menghentikan capture video dan melepaskan resource
+        Menghentikan capture video
         """
         # Mengecek apakah video masih aktif
         if self.video is not None and self.video.isOpened():
@@ -161,7 +143,6 @@ class VideoCapture:
     def get_image(self):
         """
         Mengambil satu frame dari video
-        Returns: (success, image) tuple
         """
         # Mengecek apakah video masih aktif
         if self.video is not None and self.video.isOpened():
@@ -172,17 +153,13 @@ class VideoCapture:
             return (success, None)
         return (False, None)
 
-# ---- Face Recognition Model ---- #
+# FACE RECOGNITION MODEL
 class FaceRecognitionModel:
-    """
-    Kelas utama untuk model pengenalan wajah menggunakan Eigenface
-    Implementasi Principal Component Analysis (PCA) untuk face recognition
-    """
     def __init__(self):
         """
         Inisialisasi model face recognition
         """
-        self.path = None # Path dataset training
+        self.path = None # Path dataset untuk training
         self.k = 5  # Jumlah eigenfaces yang digunakan
         self.count = 0 # Jumlah gambar training
         self.data = [] # Data gambar training (flattened)
@@ -192,10 +169,6 @@ class FaceRecognitionModel:
         self.wdata = None  # Weights dari data training
     
     def train(self, path):
-        """
-        Melatih model face recognition dengan dataset di path yang diberikan
-        Mengimplementasikan algoritma Eigenface (PCA untuk face recognition)
-        """
         self.path = path # Set path dataset
         # Reset semua data
         self.count = 0
@@ -207,12 +180,10 @@ class FaceRecognitionModel:
         sum_vector = np.zeros(256 * 256)
         
         # Load dan proses setiap gambar dalam dataset
-        for imgname in os.listdir(path):
-            print(f'Processing {imgname}')
-            
+        for img_name in os.listdir(path):
             # Load gambar dalam grayscale dan color
-            img_gray = cv2.imread(os.path.join(path, imgname), cv2.IMREAD_GRAYSCALE)
-            img_color = cv2.imread(os.path.join(path, imgname), cv2.IMREAD_COLOR)
+            img_gray = cv2.imread(os.path.join(path, img_name), cv2.IMREAD_GRAYSCALE)
+            img_color = cv2.imread(os.path.join(path, img_name), cv2.IMREAD_COLOR)
             
             # Resize gambar
             img_gray = resize_256(img_gray)
@@ -225,13 +196,11 @@ class FaceRecognitionModel:
             # Simpan data
             self.data.append(img_vector) # Vektor gambar untuk training
             self.rawimg.append(img_color) # Gambar asli untuk display
-            self.filesname.append(imgname) # Nama file
+            self.filesname.append(img_name) # Nama file
             
             # Akumulasi untuk menghitung rata-rata
             sum_vector += img_vector
             self.count += 1
-        
-        print(f'File count: {self.count}')
         
         mean_vector = sum_vector / self.count # Hitung rata-rata semua gambar training
         normalized_data = [img - mean_vector for img in self.data] # Normalisasi data dengan mengurangi rata-rata
@@ -243,8 +212,7 @@ class FaceRecognitionModel:
         cov_matrix = np.matmul(data_matrix.transpose(), data_matrix)
         
         # Hitung eigenvalues dan eigenvectors dari covariance matrix
-        print("Computing eigenvalues and eigenvectors...")
-        eigenvalues, eigenvectors = eigenvectors_qr(cov_matrix)
+        eigenvalues, eigenvectors = eigen(cov_matrix)
         
         eigvals, eigvecs = get_k_eigen(self.k, eigenvalues, eigenvectors, self.count) # Ambil k eigenvalues dan eigenvectors terbesar
         
@@ -272,10 +240,6 @@ class FaceRecognitionModel:
         print("Training completed!")
     
     def recognize(self, test_image):
-        """
-        Mengenali wajah pada gambar test
-        Returns: dictionary berisi hasil recognition
-        """
         # Cek apakah model sudah dilatih
         if self.u is None:
             raise ValueError("Model not trained yet")
@@ -328,8 +292,7 @@ class FaceRecognitionModel:
     
     def save_cache(self, path):
         """
-        Menyimpan model yang sudah dilatih ke file cache
-        Untuk menghindari training ulang
+        Menyimpan model yang sudah dilatih ke file cache agar tidak perlu training ulang
         """
         # Buat direktori cache jika belum ada
         cache_dir = os.path.dirname(path)
@@ -337,14 +300,7 @@ class FaceRecognitionModel:
             os.makedirs(cache_dir, exist_ok=True)
         
         # Simpan semua data model ke file .npz
-        np.savez(path,
-                u=self.u, # Eigenfaces
-                wdata=self.wdata, # Weights data training
-                rawimg=self.rawimg, # Gambar asli
-                filesname=self.filesname, # Nama file
-                count=self.count, # Jumlah data
-                data=self.data, # Data training
-                k=self.k) # Jumlah eigenfaces
+        np.savez(path, u=self.u, wdata=self.wdata, rawimg=self.rawimg, filesname=self.filesname, count=self.count, data=self.data, k=self.k)
     
     def load_cache(self, dataset_path, cache_path):
         """
@@ -363,27 +319,22 @@ class FaceRecognitionModel:
         self.data = data['data'].tolist()
         self.k = int(data['k'])
 
-# ---- GUI Application ---- #
+# GUI
 class FaceRecognitionApp:
     """
-    Kelas utama untuk aplikasi GUI Face Recognition
-    Menggunakan Tkinter untuk interface pengguna
+    Kelas utama untuk aplikasi GUI Face Recognition dengan tkinter
     """
     def __init__(self):
-        """
-        Inisialisasi aplikasi GUI
-        """
         # Setup window utama
         self.window = Tk()
         self.window.title('Face Recognition') # Judul window
-        # self.window.geometry("1080x600") # Ukuran window
-        self.window.geometry("1080x700")
+        self.window.geometry("1080x700") # Size
         self.window.configure(bg="#ffffff") # Background color
         self.window.resizable(False, False) # Non-resizable
         
         # Inisialisasi komponen
-        self.model = FaceRecognitionModel() # Model face recognition
-        self.video_capture = VideoCapture() # Video capture handler
+        self.model = FaceRecognitionModel()
+        self.video_capture = VideoCapture()
         
         # Variabel state aplikasi
         self.processing = False # Flag untuk proses recognition
@@ -397,11 +348,10 @@ class FaceRecognitionApp:
         self.window.protocol("WM_DELETE_WINDOW", self.on_window_close)
     
     def setup_ui(self):
-        # Buat canvas utama untuk menampung semua elemen UI
+        # Membuat canvas utama untuk menampung semua elemen UI
         self.canvas = Canvas(
             self.window,
             bg="#ffffff",
-            # height=600,
             height=700,
             width=1080,
             bd=0,
@@ -411,23 +361,21 @@ class FaceRecognitionApp:
         self.canvas.place(x=0, y=0)
         
         # Load dan tampilkan background image
-        # self.background_img = PhotoImage(file="background/background2.png")
-        self.background_img = PhotoImage(file="images/appBg.png")
-        # self.canvas.create_image(540.0, 300.0, image=self.background_img)
+        self.background_img = PhotoImage(file="assets/appBg.png")
         self.canvas.create_image(540.0, 350.0, image=self.background_img)
         
         # Buttons
         self.setup_buttons()
         
-        # Labels and entries
-        self.setup_bg_entries()
+        # # Entries
+        # self.setup_bg_entries()
         
-        # Image display
-        self.setup_image_display()
+        # # Image display
+        # self.setup_image_display()
     
     def setup_buttons(self):
         # Tombol choose file dataset
-        self.btnDatasetBg = PhotoImage(file="images/chooseFile.png")
+        self.btnDatasetBg = PhotoImage(file="assets/chooseFile.png")
         self.chooseDatasetBtn = Button(
             image=self.btnDatasetBg,
             borderwidth=0,
@@ -438,7 +386,7 @@ class FaceRecognitionApp:
         self.chooseDatasetBtn.place(x=60, y=227, width=150, height=50)
         
         # Tombol choose file image
-        self.btnImgBg = PhotoImage(file="images/chooseFile.png")
+        self.btnImgBg = PhotoImage(file="assets/chooseFile.png")
         self.chooseImgBtn = Button(
             image=self.btnImgBg,
             borderwidth=0,
@@ -449,7 +397,7 @@ class FaceRecognitionApp:
         self.chooseImgBtn.place(x=60, y=367, width=150, height=50)
         
         # Tombol start image recognition
-        self.startImgBg = PhotoImage(file="images/startImgBg.png")
+        self.startImgBg = PhotoImage(file="assets/startImgBg.png")
         self.startImgBtn = Button(
             image=self.startImgBg,
             borderwidth=0,
@@ -460,8 +408,8 @@ class FaceRecognitionApp:
         self.startImgBtn.place(x=50, y=508, width=371, height=70)
         
         # Realtime recognition
-        self.startVideoBg = PhotoImage(file="images/startVideoBg.png")
-        self.stopVideoBg = PhotoImage(file="images/stopVideoBg.png")
+        self.startVideoBg = PhotoImage(file="assets/startVideoBg.png")
+        self.stopVideoBg = PhotoImage(file="assets/stopVideoBg.png")
         self.videoBtn = Button(
             image=self.startVideoBg,
             borderwidth=0,
@@ -471,65 +419,65 @@ class FaceRecognitionApp:
         )
         self.videoBtn.place(x=50, y=578, width=371, height=70)
     
-    def setup_bg_entries(self):
+    # def setup_bg_entries(self):
         # Dataset yang akan digunakan
-        self.entry1_img = PhotoImage(file="images/fileChoosedBg.png")
+        self.entry1_img = PhotoImage(file="assets/fileChoosedBg.png")
         self.canvas.create_image(324, 252, image=self.entry1_img)
         self.entry1 = Entry(
-            bd=0, bg="#86a1ff", highlightthickness=0,
-            font=('Poppins 12 bold'), fg='#ffffff', justify='center'
+            bd=0, bg="#ffffff", highlightthickness=0,
+            font=('Poppins 12 bold'), fg='#000000', justify='center'
         )
         self.entry1.place(x=225, y=232, width=198, height=40)
         
         # Gambar yang akan ditest
-        self.entry2_img = PhotoImage(file="images/fileChoosedBg.png")
+        self.entry2_img = PhotoImage(file="assets/fileChoosedBg.png")
         self.canvas.create_image(324, 392, image=self.entry2_img)
         self.entry2 = Entry(
-            bd=0, bg="#86a1ff", highlightthickness=0,
-            font=('Poppins 12 bold'), fg='#ffffff', justify='center'
+            bd=0, bg="#ffffff", highlightthickness=0,
+            font=('Poppins 12 bold'), fg='#000000', justify='center'
         )
         self.entry2.place(x=225, y=372, width=198, height=40)
 
         # Waktu eksekusi
-        self.time_label_img = PhotoImage(file="images/timeBg.png")
+        self.time_label_img = PhotoImage(file="assets/timeBg.png")
         self.canvas.create_image(671, 538, image=self.time_label_img)
         self.time_label = Label(
-            bd=0, bg="#d2c6ff", highlightthickness=0,
-            font=('Poppins 11 bold'), fg='#010030', justify='center'
+            bd=0, bg="#ffffff", highlightthickness=0,
+            font=('Poppins 12 bold'), fg='#000000', justify='center'
         )
         self.time_label.place(x=613, y=518, width=116, height=40)
 
         # Status
-        self.status_label_img = PhotoImage(file="images/statusBg.png")
+        self.status_label_img = PhotoImage(file="assets/statusBg.png")
         self.canvas.create_image(638, 618, image=self.status_label_img)
         self.status_label = Label(
-            bd=0, bg="#d2c6ff", highlightthickness=0,
-            font=('Poppins 12 bold'), fg='#010030', justify='center'
+            bd=0, bg="#ffffff", highlightthickness=0,
+            font=('Poppins 12 bold'), fg='#000000', justify='center'
         )
         self.status_label.place(x=547, y=598, width=182, height=40)
 
         # Result
-        self.result_label_img = PhotoImage(file="images/resultBg.png")
+        self.result_label_img = PhotoImage(file="assets/resultBg.png")
         self.canvas.create_image(923, 538, image=self.result_label_img)
         self.result_label = Label(
-            bd=0, bg="#d2c6ff", highlightthickness=0,
-            font=('Poppins 12 bold'), fg='#010030', justify='center'
+            bd=0, bg="#ffffff", highlightthickness=0,
+            font=('Poppins 12 bold'), fg='#000000', justify='center'
         )
         self.result_label.place(x=831, y=518, width=184, height=40)
 
         # Persentase kemiripan
-        self.percentage_label_img = PhotoImage(file="images/percentBg.png")
+        self.percentage_label_img = PhotoImage(file="assets/percentBg.png")
         self.canvas.create_image(945, 618, image=self.percentage_label_img)
         self.percentage_label = Label(
-            bd=0, bg="#d2c6ff", highlightthickness=0,
-            font=('Poppins 12 bold'), fg='#010030', justify='center'
+            bd=0, bg="#ffffff", highlightthickness=0,
+            font=('Poppins 12 bold'), fg='#000000', justify='center'
         )
         self.percentage_label.place(x=875, y=598, width=140, height=40)
         
         # Inisialisasi entry field dengan placeholder
         self.check_entry()
     
-    def setup_image_display(self):
+    # def setup_image_display(self):
         """
         Setup area untuk menampilkan gambar input
         """
@@ -538,7 +486,7 @@ class FaceRecognitionApp:
         self.left_img_label.place(x=478, y=227, anchor=NW, width=256, height=256)
         
         # Load gambar default untuk placeholder
-        self.left_img_bg = PhotoImage(file="images/imgBg.png")
+        self.left_img_bg = PhotoImage(file="assets/imgBg.png")
         self.left_img_label.config(image=self.left_img_bg)
         self.left_img_label.image = self.left_img_bg
     
@@ -662,36 +610,25 @@ class FaceRecognitionApp:
         self.result_label.config(text=result['filename'])
         self.percentage_label.config(text=f"{result['percentage']:.1f}%")
         
-        # Print debug info
-        print(f"Best match: {result['filename']}")
-        print(f"Percentage: {result['percentage']:.2f}%")
-        print(f"Distance: {result['distance']:.2f}")
-        print("Top 3 matches:")
-        for i, (dist, idx) in enumerate(result['top_3']):
-            print(f"  {i+1}. {self.model.filesname[idx]} - {dist:.2f}")
-        
-        # Finish
+        # Done
         self.processing = False
         execution_time = time.time() - start_time
         self.time_label.config(text=f"{execution_time:.4f}s")
         self.update_status("Done")
     
     def counting(self):
-        """Timer function"""
         start = time.time()
         while self.processing:
             self.time_label.config(text=f"{(time.time() - start):.4f}s")
             time.sleep(0.1)
     
     def toggle_video(self):
-        """Toggle video capture"""
         if self.capturing_video:
             self.stop_video()
         else:
             self.start_video()
     
     def start_video(self):
-        """Start video capture"""
         if self.pathdataset is None:
             messagebox.showerror("Error", "Please choose dataset first")
             return
@@ -710,7 +647,6 @@ class FaceRecognitionApp:
         threading.Thread(target=self.video_loop, daemon=True).start()
     
     def video_loop(self):
-        """Video capture loop"""
         start_time = time.time()
         
         while self.capturing_video:
@@ -748,7 +684,6 @@ class FaceRecognitionApp:
             time.sleep(0.1)
     
     def stop_video(self):
-        """Stop video capture"""
         self.capturing_video = False
         self.video_capture.stop()
         
@@ -766,21 +701,17 @@ class FaceRecognitionApp:
         self.percentage_label.config(text="")
     
     def update_status(self, status):
-        """Update status label"""
         self.status_label.config(text=status)
     
     def on_window_close(self):
-        """Handle window close"""
         self.capturing_video = False
         self.video_capture.stop()
         self.window.destroy()
         sys.exit()
     
     def run(self):
-        """Start the application"""
         self.window.mainloop()
 
-# ---- Main Execution ---- #
 if __name__ == "__main__":
     try:
         app = FaceRecognitionApp()
