@@ -11,7 +11,6 @@ import threading # Library untuk multi-threading
 import base64 # Library untuk encoding/decoding base64
 import math # Library untuk operasi matematika
 
-# UTILS
 def resize_256(image):
     height, width = image.shape[:2] # Mendapatkan tinggi dan lebar gambar
     
@@ -88,30 +87,28 @@ def eigen(M):
     
     return np.diag(M), eigVecs # Eigenvalues ada di diagonal utama, eigenvectors di kolom eigVecs
 
-def get_k_eigen(k, eigvalues, eigvectors, filecount):
+def get_k_eigen(k, eigenvalues, eigenvectors, filecount):
     """
     Mengambil k eigenvalues dan eigenvectors terbesar
     """
-    eigvalues = np.array([])
-    eigvectors = np.empty((0, filecount), dtype=type(eigvectors))
-    
-    eigvals_copy = eigvalues.copy() # Untuk manipulasi
-    vt = eigvectors.transpose() # Untuk kemudahan akses
+    eigvals = np.array([])
+    eigvecs = np.empty((0, filecount), dtype=type(eigenvectors))
+    eigvals_copy = eigenvalues.copy() # Untuk manipulasi
+    vt = eigenvectors.transpose() # Untuk kemudahan akses
     
     # Mengambil k eigenvalues terbesar
     for i in range(k):
         max_val = eigvals_copy.max()
-        eigvalues = np.append(eigvalues, [max_val])
+        eigvals = np.append(eigvals, [max_val])
         
         index = np.where(eigvals_copy == max_val)[0][0]
         eigvals_copy[index] = 0 # Set nilai tersebut ke 0 agar tidak dipilih lagi
         
         vektor = vt[index:index+1] # Mengambil eigenvector yang sesuai
-        eigvectors = np.concatenate((eigvectors, vektor), axis=0) # Menambahkan ke array hasil
+        eigvecs = np.concatenate((eigvecs, vektor), axis=0) # Menambahkan ke array hasil
     
-    return eigvalues, eigvectors
+    return eigvals, eigvecs
 
-# VIDEO CAPTURE
 class VideoCapture:
     def __init__(self, source=0):
         self.source = source # Sumber video
@@ -153,7 +150,6 @@ class VideoCapture:
             return (success, None)
         return (False, None)
 
-# FACE RECOGNITION MODEL
 class FaceRecognitionModel:
     def __init__(self):
         """
@@ -203,7 +199,10 @@ class FaceRecognitionModel:
             self.count += 1
         
         mean_vector = sum_vector / self.count # Hitung rata-rata semua gambar training
-        normalized_data = [img - mean_vector for img in self.data] # Normalisasi data dengan mengurangi rata-rata
+        
+        normalized_data = []
+        for img in self.data:
+            normalized_data.append(img - mean_vector) # Normalisasi data dengan mengurangi rata-rata
         
         data_matrix = np.array(normalized_data).transpose() # Buat matriks data (N^2 x M) dimana N^2=65536, M=jumlah gambar
         
@@ -237,7 +236,6 @@ class FaceRecognitionModel:
             self.wdata.append(wi)
         
         self.wdata = np.array(self.wdata) # Konversi ke numpy array untuk efisiensi
-        print("Training completed!")
     
     def recognize(self, test_image):
         # Cek apakah model sudah dilatih
@@ -246,7 +244,6 @@ class FaceRecognitionModel:
         
         # Hitung rata-rata dari data training
         mean_vector = np.mean(np.array(self.data), axis=0)
-        # Normalisasi gambar test
         normalized_test = test_image - mean_vector
         
         # Hitung weights untuk gambar test
@@ -319,7 +316,6 @@ class FaceRecognitionModel:
         self.data = data['data'].tolist()
         self.k = int(data['k'])
 
-# GUI
 class FaceRecognitionApp:
     """
     Kelas utama untuk aplikasi GUI Face Recognition dengan tkinter
@@ -360,24 +356,32 @@ class FaceRecognitionApp:
         )
         self.canvas.place(x=0, y=0)
         
-        # Load dan tampilkan background image
-        self.background_img = PhotoImage(file="assets/appBg.png")
-        self.canvas.create_image(540.0, 350.0, image=self.background_img)
+        # Load dan tampilkan background image (optional, bisa dikomentari jika tidak ada file)
+        try:
+            self.background_img = PhotoImage(file="assets/appBg.png")
+            self.canvas.create_image(540.0, 350.0, image=self.background_img)
+        except:
+            pass # Jika file background tidak ada, skip
         
         # Buttons
         self.setup_buttons()
         
-        # # Entries
-        # self.setup_bg_entries()
+        # Entries
+        self.setup_bg_entries()
         
-        # # Image display
-        # self.setup_image_display()
+        # Image display
+        self.setup_image_display()
     
     def setup_buttons(self):
         # Tombol choose file dataset
-        self.btnDatasetBg = PhotoImage(file="assets/chooseFile.png")
+        try:
+            self.btnDatasetBg = PhotoImage(file="assets/chooseFile.png")
+        except:
+            self.btnDatasetBg = None
+            
         self.chooseDatasetBtn = Button(
             image=self.btnDatasetBg,
+            text="Choose Dataset" if self.btnDatasetBg is None else "",
             borderwidth=0,
             highlightthickness=0,
             command=self.select_dataset,
@@ -386,9 +390,14 @@ class FaceRecognitionApp:
         self.chooseDatasetBtn.place(x=60, y=227, width=150, height=50)
         
         # Tombol choose file image
-        self.btnImgBg = PhotoImage(file="assets/chooseFile.png")
+        try:
+            self.btnImgBg = PhotoImage(file="assets/chooseFile.png")
+        except:
+            self.btnImgBg = None
+            
         self.chooseImgBtn = Button(
             image=self.btnImgBg,
+            text="Choose Image" if self.btnImgBg is None else "",
             borderwidth=0,
             highlightthickness=0,
             command=self.select_image,
@@ -397,9 +406,14 @@ class FaceRecognitionApp:
         self.chooseImgBtn.place(x=60, y=367, width=150, height=50)
         
         # Tombol start image recognition
-        self.startImgBg = PhotoImage(file="assets/startImgBg.png")
+        try:
+            self.startImgBg = PhotoImage(file="assets/startImgBg.png")
+        except:
+            self.startImgBg = None
+            
         self.startImgBtn = Button(
             image=self.startImgBg,
+            text="Start Recognition" if self.startImgBg is None else "",
             borderwidth=0,
             highlightthickness=0,
             command=self.start_recognition_thread,
@@ -407,11 +421,17 @@ class FaceRecognitionApp:
         )
         self.startImgBtn.place(x=50, y=508, width=371, height=70)
         
-        # Realtime recognition
-        self.startVideoBg = PhotoImage(file="assets/startVideoBg.png")
-        self.stopVideoBg = PhotoImage(file="assets/stopVideoBg.png")
+        # Tombol realtime recognition
+        try:
+            self.startVideoBg = PhotoImage(file="assets/startVideoBg.png")
+            self.stopVideoBg = PhotoImage(file="assets/stopVideoBg.png")
+        except:
+            self.startVideoBg = None
+            self.stopVideoBg = None
+            
         self.videoBtn = Button(
             image=self.startVideoBg,
+            text="Start Video" if self.startVideoBg is None else "",
             borderwidth=0,
             highlightthickness=0,
             command=self.toggle_video,
@@ -419,76 +439,103 @@ class FaceRecognitionApp:
         )
         self.videoBtn.place(x=50, y=578, width=371, height=70)
     
-    # def setup_bg_entries(self):
-        # Dataset yang akan digunakan
-        self.entry1_img = PhotoImage(file="assets/fileChoosedBg.png")
-        self.canvas.create_image(324, 252, image=self.entry1_img)
+    def setup_bg_entries(self):
+        # Tempat nama dataset yang akan digunakan
+        try:
+            self.entry1_img = PhotoImage(file="assets/fileChoosedBg.png")
+            self.canvas.create_image(324, 252, image=self.entry1_img)
+        except:
+            pass
+            
         self.entry1 = Entry(
             bd=0, bg="#ffffff", highlightthickness=0,
-            font=('Poppins 12 bold'), fg='#000000', justify='center'
+            font=('Poppins', 12, 'bold'), fg='#000000', justify='center'
         )
         self.entry1.place(x=225, y=232, width=198, height=40)
         
-        # Gambar yang akan ditest
-        self.entry2_img = PhotoImage(file="assets/fileChoosedBg.png")
-        self.canvas.create_image(324, 392, image=self.entry2_img)
+        # tempat nama gambar yang akan ditest
+        try:
+            self.entry2_img = PhotoImage(file="assets/fileChoosedBg.png")
+            self.canvas.create_image(324, 392, image=self.entry2_img)
+        except:
+            pass
+            
         self.entry2 = Entry(
             bd=0, bg="#ffffff", highlightthickness=0,
-            font=('Poppins 12 bold'), fg='#000000', justify='center'
+            font=('Poppins', 12, 'bold'), fg='#000000', justify='center'
         )
         self.entry2.place(x=225, y=372, width=198, height=40)
 
-        # Waktu eksekusi
-        self.time_label_img = PhotoImage(file="assets/timeBg.png")
-        self.canvas.create_image(671, 538, image=self.time_label_img)
+        # Tempat untuk waktu eksekusi
+        try:
+            self.time_label_img = PhotoImage(file="assets/timeBg.png")
+            self.canvas.create_image(671, 538, image=self.time_label_img)
+        except:
+            pass
+            
         self.time_label = Label(
             bd=0, bg="#ffffff", highlightthickness=0,
-            font=('Poppins 12 bold'), fg='#000000', justify='center'
+            font=('Poppins', 12, 'bold'), fg='#000000', justify='center'
         )
         self.time_label.place(x=613, y=518, width=116, height=40)
 
-        # Status
-        self.status_label_img = PhotoImage(file="assets/statusBg.png")
-        self.canvas.create_image(638, 618, image=self.status_label_img)
+        # tempat untuk status
+        try:
+            self.status_label_img = PhotoImage(file="assets/statusBg.png")
+            self.canvas.create_image(638, 618, image=self.status_label_img)
+        except:
+            pass
+            
         self.status_label = Label(
             bd=0, bg="#ffffff", highlightthickness=0,
-            font=('Poppins 12 bold'), fg='#000000', justify='center'
+            font=('Poppins', 12, 'bold'), fg='#000000', justify='center'
         )
         self.status_label.place(x=547, y=598, width=182, height=40)
 
         # Result
-        self.result_label_img = PhotoImage(file="assets/resultBg.png")
-        self.canvas.create_image(923, 538, image=self.result_label_img)
+        try:
+            self.result_label_img = PhotoImage(file="assets/resultBg.png")
+            self.canvas.create_image(923, 538, image=self.result_label_img)
+        except:
+            pass
+            
         self.result_label = Label(
             bd=0, bg="#ffffff", highlightthickness=0,
-            font=('Poppins 12 bold'), fg='#000000', justify='center'
+            font=('Poppins', 12, 'bold'), fg='#000000', justify='center'
         )
         self.result_label.place(x=831, y=518, width=184, height=40)
 
-        # Persentase kemiripan
-        self.percentage_label_img = PhotoImage(file="assets/percentBg.png")
-        self.canvas.create_image(945, 618, image=self.percentage_label_img)
+        # Tempat persentase kemiripan
+        try:
+            self.percentage_label_img = PhotoImage(file="assets/percentBg.png")
+            self.canvas.create_image(945, 618, image=self.percentage_label_img)
+        except:
+            pass
+            
         self.percentage_label = Label(
             bd=0, bg="#ffffff", highlightthickness=0,
-            font=('Poppins 12 bold'), fg='#000000', justify='center'
+            font=('Poppins', 12, 'bold'), fg='#000000', justify='center'
         )
         self.percentage_label.place(x=875, y=598, width=140, height=40)
         
         # Inisialisasi entry field dengan placeholder
         self.check_entry()
     
-    # def setup_image_display(self):
+    def setup_image_display(self):
         """
         Setup area untuk menampilkan gambar input
         """
-        # Label untuk menampilkan gambar input (kiri)
+        # Label untuk menampilkan gambar input
         self.left_img_label = Label()
         self.left_img_label.place(x=478, y=227, anchor=NW, width=256, height=256)
         
         # Load gambar default untuk placeholder
-        self.left_img_bg = PhotoImage(file="assets/imgBg.png")
-        self.left_img_label.config(image=self.left_img_bg)
-        self.left_img_label.image = self.left_img_bg
+        try:
+            self.left_img_bg = PhotoImage(file="assets/imgBg.png")
+            self.left_img_label.config(image=self.left_img_bg)
+            self.left_img_label.image = self.left_img_bg
+        except:
+            pass
     
     def check_entry(self):
         """
@@ -539,7 +586,7 @@ class FaceRecognitionApp:
             image = cv2.imread(path)
             grayscale = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
             
-            # Resize gambar ke 256x256
+            # Resize gambar
             resized_image = resize_256(image)
             resized_grayscale = resize_256(grayscale)
             
