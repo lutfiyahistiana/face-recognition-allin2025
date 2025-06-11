@@ -463,16 +463,16 @@ class FaceRecognitionApp:
 
         # Tempat nama dataset yang akan digunakan
         try:
-            self.entry1_img = PhotoImage(file="assets/fileChoosedBg.png")
-            self.canvas.create_image(324, 247, image=self.entry1_img)
+            self.entry_img = PhotoImage(file="assets/fileChoosedBg.png")
+            self.canvas.create_image(324, 247, image=self.entry_img)
         except:
             pass
             
-        self.entry1 = Entry(
+        self.entryImg = Entry(
             bd=0, bg="#ffffff", highlightthickness=0,
             font=('Poppins', 12, 'bold'), fg='#000000', justify='center'
         )
-        self.entry1.place(x=225, y=227, width=198, height=40)
+        self.entryImg.place(x=225, y=227, width=198, height=40)
         
         # tempat nama gambar yang akan ditest
         try:
@@ -481,11 +481,11 @@ class FaceRecognitionApp:
         except:
             pass
             
-        self.entry2 = Entry(
+        self.entry2Img = Entry(
             bd=0, bg="#ffffff", highlightthickness=0,
             font=('Poppins', 12, 'bold'), fg='#000000', justify='center'
         )
-        self.entry2.place(x=225, y=337, width=198, height=40)
+        self.entry2Img.place(x=225, y=337, width=198, height=40)
 
         # Tempat untuk waktu eksekusi
         try:
@@ -627,10 +627,10 @@ class FaceRecognitionApp:
         """
         Mengecek dan mengisi entry field dengan placeholder jika kosong
         """
-        if self.entry1.get() == '':
-            self.entry1.insert(0, "No File Chosen")
-        if self.entry2.get() == '':
-            self.entry2.insert(0, "No File Chosen")
+        if self.entryImg.get() == '':
+            self.entryImg.insert(0, "No File Chosen")
+        if self.entry2Img.get() == '':
+            self.entry2Img.insert(0, "No File Chosen")
     
     def select_dataset(self):
         """
@@ -665,8 +665,8 @@ class FaceRecognitionApp:
         
         if path:
             # Update entry field dengan nama file
-            self.entry2.delete(0, END)
-            self.entry2.insert(0, os.path.basename(path))
+            self.entry2Img.delete(0, END)
+            self.entry2Img.insert(0, os.path.basename(path))
             
             # Load dan proses gambar
             image = cv2.imread(path)
@@ -776,7 +776,7 @@ class FaceRecognitionApp:
             messagebox.showerror("Error", "Please choose dataset first")
             return
         
-        self.entry2.delete(0, END)
+        self.entry2Img.delete(0, END)
         self.check_entry()
         
         # Change button to stop
