@@ -21,7 +21,7 @@
 
 
 ## Dependensi yang Digunakan
-- python - versi 3.10.16
+- python - versi 3.10
 - numpy - versi 2.2.6
 - opencv-python - versi 4.11.0.86
 - Pillow - versi 11.2.1
