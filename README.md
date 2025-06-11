@@ -6,7 +6,7 @@
 
 ## Daftar Isi
 * [Deskripsi](#deskripsi)
-* [Teknologi yang Digunakan](#teknologi-yang-digunakan)
+* [Dependensi yang Digunakan](#dependensi-yang-digunakan)
 * [Fitur Utama](#fitur-utama)
 * [Setup](#setup)
 * [Penggunaan](#penggunaan)
@@ -20,7 +20,7 @@
 <!-- You don't have to answer all the questions - just the ones relevant to your project. -->
 
 
-## Teknologi yang Digunakan
+## Dependensi yang Digunakan
 - python - versi 3.10.16
 - numpy - versi 2.2.6
 - opencv-python - versi 4.11.0.86
@@ -37,7 +37,7 @@ Catatan: dapat juga menggunakan versi dependensi yang lain selama tidak ada konf
 
 
 ## Setup
-- Install seluruh dependensi yang tercantum pada bagian [Teknologi yang Digunakan](#teknologi-yang-digunakan).
+- Install seluruh dependensi yang tercantum pada bagian [Dependensi yang Digunakan](#dependensi-yang-digunakan).
 
 - Setelah Python terinstall, dependensi lain dapat diinstall secara manual atau dapat juga diinstall menggunakan pip dan file `requirements.txt` yang tersedia
 
@@ -69,6 +69,7 @@ Catatan: dapat juga menggunakan versi dependensi yang lain selama tidak ada konf
 
 
 ## Referensi
+- [https://docs.python.org/3/library/tkinter.ttk.html](https://docs.python.org/3/library/tkinter.ttk.html)
 - [https://hendri.lecturer.pens.ac.id/MyPublication/AkhmadHendriawan_IES-21-okt-2009.pdf](https://hendri.lecturer.pens.ac.id/MyPublication/AkhmadHendriawan_IES-21-okt-2009.pdf)
 - [https://informatika.stei.itb.ac.id/~rinaldi.munir/AljabarGeometri/2022-2023/Algeo-19-Nilai-Eigen-dan-Vektor-Eigen-Bagian2-2022.pdf](https://informatika.stei.itb.ac.id/~rinaldi.munir/AljabarGeometri/2022-2023/Algeo-19-Nilai-Eigen-dan-Vektor-Eigen-Bagian2-2022.pdf)
 - [https://stackoverflow.com/questions/53263842/how-to-calculate-eigenfaces-in-python](https://stackoverflow.com/questions/53263842/how-to-calculate-eigenfaces-in-python)
